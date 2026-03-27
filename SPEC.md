@@ -1,7 +1,96 @@
 # Dev-Pipe App Specification
 
-## Overview
-Android app to control the dev-pipe pipeline system.
+## What is Dev-Pipe?
+
+**Dev-Pipe** is a self-hosted AI-powered coding pipeline. It allows you to:
+
+1. **Create a task** (e.g., "Create a hello world Python script")
+2. **AI automatically implements it** - Creates repo, writes code, commits, pushes, and creates a PR
+3. **You review and merge** - AI creates a Pull Request for you to review
+
+Think of it as a personal AI developer that creates GitHub Pull Requests for you.
+
+### Example Flow
+
+```
+User: "Create a login form in React"
+    │
+    ▼
+Dev-Pipe: Creates GitHub repo
+    │
+    ▼
+Dev-Pipe: AI writes code (using opencode with big-pickle model)
+    │
+    ▼
+Dev-Pipe: Creates Pull Request
+    │
+    ▼
+User: Reviews PR → Merges ✅
+```
+
+## System Overview
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   GitHub     │◄───►│  Dev-Pipe   │◄───►│   Docker    │
+│   API        │     │   Server    │     │  (runner)   │
+└──────────────┘     └──────────────┘     └──────────────┘
+                            │
+                            ▼
+                     ┌──────────────┐
+                     │    Redis     │
+                     │   (state)    │
+                     └──────────────┘
+```
+
+### Components
+
+1. **Dev-Pipe Server** (Go)
+   - REST API for sessions/jobs
+   - Webhook receiver for GitHub events
+   - Job executor that runs pipeline steps
+
+2. **Docker Runner**
+   - Runs each pipeline step in isolated containers
+   - Uses debian-based image with opencode AI CLI
+   - Security: memory limit, no network for untrusted steps
+
+3. **Redis**
+   - Stores session and job state
+   - Persists pipeline history
+
+4. **GitHub**
+   - Creates repositories via API
+   - Creates Pull Requests
+   - Uses Personal Access Token (PAT)
+
+## Pipeline Steps
+
+When a session is approved, this happens automatically:
+
+```
+1. create-repo    → Creates GitHub repository
+2. checkout      → Clones repo to workspace
+3. opencode      → AI writes code (big-pickle model)
+4. git-commit    → Commits changes to new branch
+5. git-push      → Pushes branch to remote
+6. create-pr     → Creates Pull Request
+```
+
+## Session States
+
+```
+planning ──(approve)──► approved ──(start)──► implementing ──(PR created)──►
+                                              awaiting_approval ──(merge)──► done
+        ▲                         │
+        └─────────────────────────┘ (reject)
+```
+
+- **planning**: Just created, waiting for approval
+- **approved**: Approved, pipeline starts automatically
+- **implementing**: Pipeline is running
+- **awaiting_approval**: PR created, waiting for user to merge
+- **done**: Merged successfully
 
 ## Architecture
 
@@ -66,6 +155,11 @@ GET /api.php?token=<fixed_token>&action=get_url
 ```
 Returns: `{ "url": "https://..." }`
 
+### Actions
+- `get_url` - Returns cached dev-pipe URL
+- `set_url?url=<url>` - Updates cached URL (admin)
+- `status` - Checks if dev-pipe is reachable
+
 ### Token Verification
 - Fixed token in PHP config (DEV_PIPE_TOKEN)
 - Must match for URL discovery
@@ -86,14 +180,31 @@ Returns: `{ "url": "https://..." }`
 }
 ```
 
+### Job
+```json
+{
+  "id": "1234567890",
+  "name": "session-job-my-task",
+  "status": "pending|running|success|failed",
+  "steps": [
+    { "name": "Create Repository", "status": "success" },
+    { "name": "Checkout", "status": "success" },
+    { "name": "OpenCode Task", "status": "success" },
+    { "name": "Commit", "status": "success" },
+    { "name": "Push", "status": "success" },
+    { "name": "Create PR", "status": "success" }
+  ]
+}
+```
+
 ### Component Status
 ```json
 {
   "components": [
-    { "name": "server", "status": "online|off|error" },
-    { "name": "docker", "status": "online|off|error" },
-    { "name": "github", "status": "online|off|error" },
-    { "name": "store", "status": "online|off|error" }
+    { "name": "server", "status": "online" },
+    { "name": "docker", "status": "online" },
+    { "name": "github", "status": "online" },
+    { "name": "store", "status": "online" }
   ]
 }
 ```
