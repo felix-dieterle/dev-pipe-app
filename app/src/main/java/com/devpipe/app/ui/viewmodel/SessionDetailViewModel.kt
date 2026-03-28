@@ -1,0 +1,80 @@
+package com.devpipe.app.ui.viewmodel
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.devpipe.app.data.model.Job
+import com.devpipe.app.data.model.Session
+import com.devpipe.app.data.repository.DevPipeRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class SessionDetailUiState(
+    val isLoading: Boolean = false,
+    val session: Session? = null,
+    val jobs: List<Job> = emptyList(),
+    val actionInProgress: Boolean = false,
+    val error: String? = null,
+    val actionError: String? = null
+)
+
+@HiltViewModel
+class SessionDetailViewModel @Inject constructor(
+    private val repository: DevPipeRepository,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    private val sessionId: String = checkNotNull(savedStateHandle["sessionId"])
+
+    private val _uiState = MutableStateFlow(SessionDetailUiState())
+    val uiState: StateFlow<SessionDetailUiState> = _uiState
+
+    init {
+        load()
+    }
+
+    fun load() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            val sessionResult = repository.getSession(sessionId)
+            val jobsResult = repository.getJobs()
+            val session = sessionResult.getOrNull()
+            val allJobs = jobsResult.getOrNull() ?: emptyList()
+            val sessionJobs = allJobs.filter { it.name.contains(session?.name ?: "", ignoreCase = true) }
+            _uiState.value = SessionDetailUiState(
+                session = session,
+                jobs = sessionJobs,
+                error = sessionResult.exceptionOrNull()?.message
+            )
+        }
+    }
+
+    fun approve() = performAction("approve")
+
+    fun reject(reason: String? = null) = performAction("reject", reason)
+
+    fun mergePr() = performAction("merge")
+
+    private fun performAction(action: String, reason: String? = null) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(actionInProgress = true, actionError = null)
+            repository.sessionAction(sessionId, action, reason).fold(
+                onSuccess = { updated ->
+                    _uiState.value = _uiState.value.copy(
+                        session = updated,
+                        actionInProgress = false
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        actionInProgress = false,
+                        actionError = e.message
+                    )
+                }
+            )
+        }
+    }
+}
