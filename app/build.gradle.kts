@@ -29,6 +29,10 @@ android {
                 storePassword = keystorePassword
                 this.keyAlias = keyAlias
                 this.keyPassword = keyPassword
+                val keystoreType = System.getenv("KEYSTORE_TYPE")
+                if (keystoreType != null) {
+                    storeType = keystoreType
+                }
             } else {
                 logger.warn(
                     "WARNING: Signing credentials not set. " +
