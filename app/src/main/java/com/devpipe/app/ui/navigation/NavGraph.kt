@@ -1,5 +1,6 @@
 package com.devpipe.app.ui.navigation
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.List
@@ -56,7 +57,7 @@ fun NavGraph() {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
-            modifier = androidx.compose.ui.Modifier.padding(innerPadding = innerPadding)
+            modifier = androidx.compose.ui.Modifier.padding(innerPadding)
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen()
