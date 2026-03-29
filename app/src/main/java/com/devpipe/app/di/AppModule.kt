@@ -65,7 +65,6 @@ object AppModule {
     @Provides
     @Singleton
     fun providePhpDiscoveryApi(
-        preferencesManager: PreferencesManager,
         @Named("discovery") client: OkHttpClient
     ): PhpDiscoveryApi {
         // Use a placeholder base URL; the actual discovery URL is set by the user in Settings
