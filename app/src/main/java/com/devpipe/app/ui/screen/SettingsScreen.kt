@@ -47,6 +47,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 value = backendUrlInput,
                 onValueChange = { backendUrlInput = it },
                 label = { Text("Backend URL") },
+                placeholder = { Text("http://192.168.1.100:8080/") },
+                supportingText = { Text("The base URL of your Dev-Pipe server") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -64,6 +66,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 onValueChange = { phpUrlInput = it },
                 label = { Text("PHP Discovery URL") },
                 placeholder = { Text("https://example.com/api.php") },
+                supportingText = { Text("URL to your api.php endpoint used to auto-discover the backend URL. Leave empty if you set the backend URL manually.") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -101,6 +104,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 value = tokenInput,
                 onValueChange = { tokenInput = it },
                 label = { Text("API Token") },
+                supportingText = { Text("Your Dev-Pipe API token. Find it in your server's configuration or admin panel.") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
