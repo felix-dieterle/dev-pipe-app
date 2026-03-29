@@ -9,9 +9,10 @@ local.properties
 *.ap_
 *.dex
 
-# Keystore
+# Keystore — ignore binary keystores but allow the repo-stored CI base64 file
 *.jks
 *.keystore
+!keystore/debug-release.b64
 
 # IDE
 .idea/

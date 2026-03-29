@@ -1,13 +1,35 @@
 # Keystore Setup for Automated Signed APK Releases
 
 This project uses a keystore to consistently sign release APKs in CI/CD.
-The keystore file is **never** stored in the repository — it lives solely in
-GitHub Secrets so that the signing identity is stable across builds and
-allows in-place app updates on devices.
 
-## Required GitHub Secrets
+## Signing strategy
 
-Configure the following secrets in **Settings → Secrets and variables → Actions**:
+| Situation | Keystore used | Suitable for |
+|-----------|--------------|--------------|
+| GitHub Secrets **configured** | Secrets (`KEYSTORE_BASE64` etc.) | Production / end-user distribution |
+| GitHub Secrets **not configured** | Repo-stored CI keystore (`keystore/debug-release.b64`) | Development builds, CI smoke-tests |
+
+> **Warning:** APKs signed with the repo-stored CI keystore share a public signing
+> identity and **must not be distributed to end users**. Configure the production
+> secrets before shipping.
+
+## Repo-stored CI keystore (no secrets needed)
+
+A fixed JKS keystore (`keystore/debug-release.b64`) is committed to the repository.
+When none of the signing secrets are set the CI workflow automatically decodes and
+uses this keystore so that builds never fail due to missing secrets.
+
+| Property          | Value          |
+|-------------------|----------------|
+| Keystore password | `cipassword`   |
+| Key alias         | `release-key`  |
+| Key password      | `cipassword`   |
+| Store type        | `JKS`          |
+
+## Production secrets (for real releases)
+
+Configure the following secrets in **Settings → Secrets and variables → Actions**
+to override the repo keystore with your own signing identity:
 
 | Secret name        | Description                                              |
 |--------------------|----------------------------------------------------------|
@@ -17,7 +39,7 @@ Configure the following secrets in **Settings → Secrets and variables → Acti
 | `KEY_PASSWORD`     | Password for the signing key                             |
 | `KEYSTORE_TYPE`    | Keystore format: `JKS` (recommended) or `PKCS12`         |
 
-## Generating a new keystore (first-time setup)
+## Generating a new production keystore
 
 ```bash
 keytool -genkey -v \
