@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -62,8 +63,13 @@ class SettingsViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
+            val phpUrl = preferencesManager.phpDiscoveryUrl.first()
+            if (phpUrl.isBlank()) {
+                _uiState.value = SettingsUiState(discoveryError = "No PHP discovery URL configured")
+                return@launch
+            }
             _uiState.value = SettingsUiState(discoveryInProgress = true)
-            repository.discoverUrl(token).fold(
+            repository.discoverUrl(phpUrl, token).fold(
                 onSuccess = { response ->
                     preferencesManager.saveBackendUrl(response.url)
                     _uiState.value = SettingsUiState(discoverySuccess = true)

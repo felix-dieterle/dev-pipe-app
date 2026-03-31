@@ -36,6 +36,6 @@ class DevPipeRepository @Inject constructor(
 
     suspend fun getJob(id: String): Result<Job> = runCatching { api.getJob(id) }
 
-    suspend fun discoverUrl(token: String): Result<UrlResponse> =
-        runCatching { phpApi.getUrl(token) }
+    suspend fun discoverUrl(phpUrl: String, token: String): Result<UrlResponse> =
+        runCatching { phpApi.getUrl(phpUrl, token) }
 }
