@@ -3,14 +3,17 @@
  * Dev-Pipe URL Discovery API
  *
  * Place this at: public/apps/devpipe/api.php
- *
- * Configuration:
- *   Set DEV_PIPE_TOKEN to a secure random string
- *   Set DEV_PIPE_DEFAULT_URL as fallback
+ * 
+ * Endpoints:
+ *   ?token=<DEV_PIPE_TOKEN>&action=get_url      - Get dev-pipe URL
+ *   ?token=<DEV_PIPE_TOKEN>&action=set_url&url=<url>  - Set dev-pipe URL
+ *   ?token=<DEV_PIPE_TOKEN>&action=status         - Check dev-pipe status
+ *   ?token=<DEV_PIPE_TOKEN>&action=api_token     - Get API token for app
  */
 
-// Configuration - UPDATE THESE
-define('DEV_PIPE_TOKEN', 'your-secure-token-here');
+// Configuration
+define('DEV_PIPE_TOKEN', 'mamarazzi-app-token-2026');
+define('DEV_PIPE_API_TOKEN', 'devpipe-app-token-2026');
 define('DEV_PIPE_DEFAULT_URL', 'http://localhost:8080');
 define('URL_CACHE_FILE', __DIR__ . '/url_cache.txt');
 
@@ -54,12 +57,10 @@ function isValidUrl(string $url): bool
 // Handle actions
 switch ($action) {
     case 'get_url':
-        // Return cached URL or default
         echo json_encode(['url' => getCachedUrl()]);
         break;
 
     case 'set_url':
-        // Update cached URL (admin only)
         if (empty($newUrl)) {
             http_response_code(400);
             echo json_encode(['error' => 'URL parameter required']);
@@ -67,15 +68,18 @@ switch ($action) {
         }
         if (!isValidUrl($newUrl)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid URL – must be http:// or https://']);
+            echo json_encode(['error' => 'Invalid URL - must be http:// or https://']);
             break;
         }
         file_put_contents(URL_CACHE_FILE, $newUrl);
         echo json_encode(['success' => true, 'url' => $newUrl]);
         break;
-
+        
+    case 'api_token':
+        echo json_encode(['token' => DEV_PIPE_API_TOKEN]);
+        break;
+        
     case 'status':
-        // Check if dev-pipe is reachable
         $url = getCachedUrl();
 
         if (!function_exists('curl_init')) {
@@ -87,6 +91,7 @@ switch ($action) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 5);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . DEV_PIPE_API_TOKEN]);
         curl_exec($ch);
         $curlError = curl_errno($ch);
         $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -103,5 +108,5 @@ switch ($action) {
 
     default:
         http_response_code(400);
-        echo json_encode(['error' => 'Unknown action']);
+        echo json_encode(['error' => 'Unknown action. Use: get_url, set_url, status, api_token']);
 }
