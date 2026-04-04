@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-        Dev-Pipe connects to a local/LAN server (HTTP). Android 9+ blocks cleartext
-        (HTTP) traffic by default, so we explicitly permit it here.
-        This covers localhost (emulator/device loopback) and the Android emulator
-        special address 10.0.2.2 (maps to the host machine's loopback).
-        When using a LAN IP (e.g. 192.168.x.x), ensure your server uses HTTPS or
-        add your server's IP to a <domain-config> block below.
+        Dev-Pipe connects to user-configured servers that may use plain HTTP.
+        Android 9+ blocks cleartext (HTTP) traffic by default, so we explicitly
+        permit it for all domains here. This covers localhost, LAN IPs, and any
+        custom discovery/backend endpoints the user configures (e.g. a PHP
+        discovery URL on a public host).
     -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <!-- Android emulator host machine loopback -->
-        <domain includeSubdomains="false">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
