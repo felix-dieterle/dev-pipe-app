@@ -2,6 +2,7 @@ package com.devpipe.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpipe.app.data.logging.LogManager
 import com.devpipe.app.data.repository.DevPipeRepository
 import com.devpipe.app.data.storage.PreferencesManager
 import com.devpipe.app.data.storage.TokenManager
@@ -24,7 +25,8 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
     private val tokenManager: TokenManager,
-    private val repository: DevPipeRepository
+    private val repository: DevPipeRepository,
+    private val logManager: LogManager
 ) : ViewModel() {
 
     val backendUrl: StateFlow<String> = preferencesManager.backendUrl
@@ -43,14 +45,33 @@ class SettingsViewModel @Inject constructor(
 
     fun saveToken(token: String) {
         tokenManager.saveToken(token)
+        logManager.info("Settings", "API token updated")
+        // Auto-trigger discovery if a PHP discovery URL is already configured
+        val phpUrl = phpDiscoveryUrl.value
+        if (phpUrl.isNotBlank() && token.isNotBlank()) {
+            logManager.info("Settings", "Token changed – re-running auto-discovery")
+            discoverUrl()
+        }
     }
 
     fun saveBackendUrl(url: String) {
-        viewModelScope.launch { preferencesManager.saveBackendUrl(url) }
+        viewModelScope.launch {
+            preferencesManager.saveBackendUrl(url)
+            logManager.info("Settings", "Backend URL set to: $url")
+        }
     }
 
     fun savePhpDiscoveryUrl(url: String) {
-        viewModelScope.launch { preferencesManager.savePhpDiscoveryUrl(url) }
+        viewModelScope.launch {
+            preferencesManager.savePhpDiscoveryUrl(url)
+            logManager.info("Settings", "PHP discovery URL set to: $url")
+            // Auto-trigger discovery if a token is already configured
+            val token = tokenManager.getToken()
+            if (url.isNotBlank() && !token.isNullOrBlank()) {
+                logManager.info("Settings", "Discovery URL changed – re-running auto-discovery")
+                discoverUrl()
+            }
+        }
     }
 
     fun saveTheme(theme: String) {
@@ -59,23 +80,31 @@ class SettingsViewModel @Inject constructor(
 
     fun discoverUrl() {
         val token = tokenManager.getToken() ?: run {
+            val msg = "Auto-discovery failed: no API token configured"
+            logManager.error("AutoDiscovery", msg)
             _uiState.value = SettingsUiState(discoveryError = "No API token configured")
             return
         }
         viewModelScope.launch {
             val phpUrl = preferencesManager.phpDiscoveryUrl.first()
             if (phpUrl.isBlank()) {
+                val msg = "Auto-discovery failed: no PHP discovery URL configured"
+                logManager.error("AutoDiscovery", msg)
                 _uiState.value = SettingsUiState(discoveryError = "No PHP discovery URL configured")
                 return@launch
             }
+            logManager.info("AutoDiscovery", "Starting discovery via $phpUrl")
             _uiState.value = SettingsUiState(discoveryInProgress = true)
             repository.discoverUrl(phpUrl, token).fold(
                 onSuccess = { response ->
                     preferencesManager.saveBackendUrl(response.url)
+                    logManager.info("AutoDiscovery", "Discovery succeeded – backend URL: ${response.url}")
                     _uiState.value = SettingsUiState(discoverySuccess = true)
                 },
                 onFailure = { e ->
-                    _uiState.value = SettingsUiState(discoveryError = e.message)
+                    val msg = e.message ?: "Unknown error"
+                    logManager.error("AutoDiscovery", "Discovery failed: $msg")
+                    _uiState.value = SettingsUiState(discoveryError = msg)
                 }
             )
         }

@@ -1,7 +1,7 @@
 package com.devpipe.app.di
 
+import com.devpipe.app.data.logging.LogManager
 import com.devpipe.app.data.storage.PreferencesManager
-import android.util.Log
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -17,7 +17,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class DynamicUrlInterceptor @Inject constructor(
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val logManager: LogManager
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -33,7 +34,7 @@ class DynamicUrlInterceptor @Inject constructor(
             val newRequest = originalRequest.newBuilder().url(newUrl).build()
             chain.proceed(newRequest)
         } catch (e: Exception) {
-            Log.e("DynamicUrlInterceptor", "Invalid base URL '$baseUrl', using original", e)
+            logManager.error("DynamicUrlInterceptor", "Invalid base URL '$baseUrl', using original: ${e.message}")
             chain.proceed(originalRequest)
         }
     }

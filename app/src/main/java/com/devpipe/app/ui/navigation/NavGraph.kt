@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,9 +19,10 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Sessions : Screen("sessions", "Sessions", Icons.AutoMirrored.Filled.List)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object Logs : Screen("logs", "Logs", Icons.Default.Description)
 }
 
-private val bottomNavScreens = listOf(Screen.Dashboard, Screen.Sessions, Screen.Settings)
+private val bottomNavScreens = listOf(Screen.Dashboard, Screen.Sessions, Screen.Settings, Screen.Logs)
 
 @Composable
 fun NavGraph() {
@@ -74,6 +76,9 @@ fun NavGraph() {
             }
             composable(Screen.Settings.route) {
                 SettingsScreen()
+            }
+            composable(Screen.Logs.route) {
+                LogsScreen()
             }
             composable(
                 route = "session_detail/{sessionId}",
