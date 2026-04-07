@@ -24,18 +24,18 @@ class DynamicUrlInterceptor @Inject constructor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val baseUrl = runBlocking { preferencesManager.backendUrl.first() }
         val originalRequest = chain.request()
-        return try {
-            val newBaseUrl = baseUrl.toHttpUrl()
-            val newUrl = originalRequest.url.newBuilder()
-                .scheme(newBaseUrl.scheme)
-                .host(newBaseUrl.host)
-                .port(newBaseUrl.port)
-                .build()
-            val newRequest = originalRequest.newBuilder().url(newUrl).build()
-            chain.proceed(newRequest)
-        } catch (e: Exception) {
+        val newBaseUrl = try {
+            baseUrl.toHttpUrl()
+        } catch (e: IllegalArgumentException) {
             logManager.error("DynamicUrlInterceptor", "Invalid base URL '$baseUrl', using original: ${e.message}")
-            chain.proceed(originalRequest)
+            return chain.proceed(originalRequest)
         }
+        val newUrl = originalRequest.url.newBuilder()
+            .scheme(newBaseUrl.scheme)
+            .host(newBaseUrl.host)
+            .port(newBaseUrl.port)
+            .build()
+        val newRequest = originalRequest.newBuilder().url(newUrl).build()
+        return chain.proceed(newRequest)
     }
 }
