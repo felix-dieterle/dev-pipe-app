@@ -93,7 +93,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 Text(uiState.discoveryError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             if (uiState.discoverySuccess) {
-                Text("URL updated successfully", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "URL updated successfully" + (uiState.discoveredUrl?.let { ": $it" } ?: ""),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
 
             HorizontalDivider()
