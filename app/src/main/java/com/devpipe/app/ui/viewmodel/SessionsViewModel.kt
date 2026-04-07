@@ -2,6 +2,7 @@ package com.devpipe.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpipe.app.data.logging.LogManager
 import com.devpipe.app.data.model.Session
 import com.devpipe.app.data.repository.DevPipeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +19,8 @@ data class SessionsUiState(
 
 @HiltViewModel
 class SessionsViewModel @Inject constructor(
-    private val repository: DevPipeRepository
+    private val repository: DevPipeRepository,
+    private val logManager: LogManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SessionsUiState())
@@ -36,6 +38,7 @@ class SessionsViewModel @Inject constructor(
                     _uiState.value = SessionsUiState(sessions = sessions)
                 },
                 onFailure = { e ->
+                    logManager.error("Sessions", "Load failed: ${e.message}")
                     _uiState.value = SessionsUiState(error = e.message)
                 }
             )

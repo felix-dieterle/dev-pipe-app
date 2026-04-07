@@ -4,7 +4,6 @@ import com.devpipe.app.data.api.DevPipeApi
 import com.devpipe.app.data.api.PhpDiscoveryApi
 import com.devpipe.app.data.repository.DevPipeRepository
 import com.devpipe.app.data.storage.PreferencesManager
-import com.devpipe.app.data.storage.TokenManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,11 +23,6 @@ object AppModule {
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-
-    @Provides
-    @Singleton
-    fun provideAuthInterceptor(tokenManager: TokenManager): AuthInterceptor =
-        AuthInterceptor(tokenManager)
 
     @Provides
     @Singleton
@@ -86,16 +80,3 @@ object AppModule {
     ): DevPipeRepository = DevPipeRepository(api, phpApi)
 }
 
-class AuthInterceptor(private val tokenManager: TokenManager) : okhttp3.Interceptor {
-    override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
-        val token = tokenManager.getToken()
-        val request = if (!token.isNullOrBlank()) {
-            chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer $token")
-                .build()
-        } else {
-            chain.request()
-        }
-        return chain.proceed(request)
-    }
-}

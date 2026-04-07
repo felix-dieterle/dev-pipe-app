@@ -3,6 +3,7 @@ package com.devpipe.app.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpipe.app.data.logging.LogManager
 import com.devpipe.app.data.model.Job
 import com.devpipe.app.data.model.Session
 import com.devpipe.app.data.repository.DevPipeRepository
@@ -24,6 +25,7 @@ data class SessionDetailUiState(
 @HiltViewModel
 class SessionDetailViewModel @Inject constructor(
     private val repository: DevPipeRepository,
+    private val logManager: LogManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -41,13 +43,19 @@ class SessionDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val sessionResult = repository.getSession(sessionId)
             val jobsResult = repository.getJobs()
+            val error = sessionResult.exceptionOrNull()?.message
+            if (error != null) {
+                logManager.error("SessionDetail", "Load failed for session $sessionId: $error")
+            }
             val session = sessionResult.getOrNull()
             val allJobs = jobsResult.getOrNull() ?: emptyList()
-            val sessionJobs = allJobs.filter { it.name.contains(session?.name ?: "", ignoreCase = true) }
+            val sessionJobs = session?.let { s ->
+                allJobs.filter { it.name.contains(s.name, ignoreCase = true) }
+            } ?: emptyList()
             _uiState.value = SessionDetailUiState(
                 session = session,
                 jobs = sessionJobs,
-                error = sessionResult.exceptionOrNull()?.message
+                error = error
             )
         }
     }
@@ -69,6 +77,7 @@ class SessionDetailViewModel @Inject constructor(
                     )
                 },
                 onFailure = { e ->
+                    logManager.error("SessionDetail", "Action '$action' failed for session $sessionId: ${e.message}")
                     _uiState.value = _uiState.value.copy(
                         actionInProgress = false,
                         actionError = e.message

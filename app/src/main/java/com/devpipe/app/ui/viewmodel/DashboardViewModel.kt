@@ -2,6 +2,7 @@ package com.devpipe.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpipe.app.data.logging.LogManager
 import com.devpipe.app.data.model.ComponentStatus
 import com.devpipe.app.data.model.StatusResponse
 import com.devpipe.app.data.repository.DevPipeRepository
@@ -21,7 +22,8 @@ data class DashboardUiState(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: DevPipeRepository
+    private val repository: DevPipeRepository,
+    private val logManager: LogManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -36,12 +38,16 @@ class DashboardViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val health = repository.getHealth()
             val status = repository.getStatus()
+            val error = health.exceptionOrNull()?.message ?: status.exceptionOrNull()?.message
+            if (error != null) {
+                logManager.error("Dashboard", "Load failed: $error")
+            }
             _uiState.value = DashboardUiState(
                 isLoading = false,
                 components = health.getOrNull()?.components ?: emptyList(),
                 sessionCounts = status.getOrNull()?.sessionCounts ?: emptyMap(),
                 jobCounts = status.getOrNull()?.jobCounts ?: emptyMap(),
-                error = health.exceptionOrNull()?.message ?: status.exceptionOrNull()?.message
+                error = error
             )
         }
     }
