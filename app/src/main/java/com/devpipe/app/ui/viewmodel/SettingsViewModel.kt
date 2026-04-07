@@ -18,7 +18,8 @@ import javax.inject.Inject
 data class SettingsUiState(
     val discoveryInProgress: Boolean = false,
     val discoveryError: String? = null,
-    val discoverySuccess: Boolean = false
+    val discoverySuccess: Boolean = false,
+    val discoveredUrl: String? = null
 )
 
 @HiltViewModel
@@ -99,7 +100,7 @@ class SettingsViewModel @Inject constructor(
                 onSuccess = { response ->
                     preferencesManager.saveBackendUrl(response.url)
                     logManager.info("AutoDiscovery", "Discovery succeeded – backend URL: ${response.url}")
-                    _uiState.value = SettingsUiState(discoverySuccess = true)
+                    _uiState.value = SettingsUiState(discoverySuccess = true, discoveredUrl = response.url)
                 },
                 onFailure = { e ->
                     val msg = e.message ?: "Unknown error"
