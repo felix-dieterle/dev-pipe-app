@@ -24,7 +24,15 @@ class AuthInterceptor @Inject constructor(
             logManager.warn("AuthInterceptor", "No API token configured – request sent without Authorization header: $safeUrl")
             chain.request()
         }
-        val response = chain.proceed(request)
+        val response = try {
+            chain.proceed(request)
+        } catch (e: java.io.IOException) {
+            logManager.error(
+                "AuthInterceptor",
+                "Connection error for ${safeUrl(request.url)} (token: ${maskedToken(token)}): ${e.message}"
+            )
+            throw e
+        }
         if (response.code == 401) {
             logManager.error(
                 "AuthInterceptor",
