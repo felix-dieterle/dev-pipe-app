@@ -5,11 +5,13 @@
  * Place this at: public/apps/devpipe/api.php
  * 
  * Endpoints:
- *   ?token=<DEV_PIPE_TOKEN>&action=get_url      - Get dev-pipe URL
- *   ?token=<DEV_PIPE_TOKEN>&action=set_url&url=<url>  - Set dev-pipe URL
- *   ?token=<DEV_PIPE_TOKEN>&action=status         - Check dev-pipe status
- *   ?token=<DEV_PIPE_TOKEN>&action=api_token     - Get API token for app
- *   ?token=<DEV_PIPE_TOKEN>&action=diag           - Diagnostic info & port test
+ *   ?action=get_url       - Get dev-pipe URL
+ *   ?action=set_url&url=  - Set dev-pipe URL
+ *   ?action=status        - Check dev-pipe status
+ *   ?action=api_token     - Get API token for app
+ *   ?action=diag          - Diagnostic info & port test
+ *   ?action=get_ip        - Get cached public IP
+ *   ?action=set_ip&ip=    - Set public IP
  */
 
 // Configuration
@@ -17,6 +19,7 @@ define('DEV_PIPE_TOKEN', 'mamarazzi-app-token-2026');
 define('DEV_PIPE_API_TOKEN', 'devpipe-app-token-2026');
 define('DEV_PIPE_DEFAULT_URL', 'http://localhost:8080');
 define('URL_CACHE_FILE', __DIR__ . '/url_cache.txt');
+define('IP_CACHE_FILE', __DIR__ . '/ip_cache.txt');
 
 header('Content-Type: application/json');
 
@@ -53,6 +56,17 @@ function isValidUrl(string $url): bool
     $scheme = $parsed['scheme'] ?? '';
     $host   = $parsed['host']   ?? '';
     return in_array($scheme, ['http', 'https'], true) && $host !== '';
+}
+
+function getCachedIp(): string
+{
+    $ip = @file_get_contents(IP_CACHE_FILE);
+    return ($ip !== false) ? trim($ip) : '';
+}
+
+function isValidIp(string $ip): bool
+{
+    return filter_var($ip, FILTER_VALIDATE_IP) !== false;
 }
 
 // Handle actions
@@ -131,6 +145,26 @@ switch ($action) {
         $diag['localhost_8080'] = $localTest;
         
         echo json_encode($diag);
+        break;
+
+    case 'get_ip':
+        echo json_encode(['ip' => getCachedIp()]);
+        break;
+
+    case 'set_ip':
+        $newIp = $_GET['ip'] ?? '';
+        if (empty($newIp)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'IP parameter required']);
+            break;
+        }
+        if (!isValidIp($newIp)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid IP address']);
+            break;
+        }
+        file_put_contents(IP_CACHE_FILE, $newIp);
+        echo json_encode(['success' => true, 'ip' => $newIp]);
         break;
 
     default:
