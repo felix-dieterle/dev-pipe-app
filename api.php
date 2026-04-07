@@ -9,6 +9,7 @@
  *   ?token=<DEV_PIPE_TOKEN>&action=set_url&url=<url>  - Set dev-pipe URL
  *   ?token=<DEV_PIPE_TOKEN>&action=status         - Check dev-pipe status
  *   ?token=<DEV_PIPE_TOKEN>&action=api_token     - Get API token for app
+ *   ?token=<DEV_PIPE_TOKEN>&action=diag           - Diagnostic info & port test
  */
 
 // Configuration
@@ -104,6 +105,32 @@ switch ($action) {
 
         $status = ($httpCode === 200) ? 'online' : 'offline';
         echo json_encode(['status' => $status, 'url' => $url]);
+        break;
+
+    case 'diag':
+        $diag = [];
+        $diag['server_ip'] = $_SERVER['SERVER_ADDR'] ?? 'unknown';
+        $diag['remote_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $diag['hostname'] = gethostname();
+        $diag['php_version'] = PHP_VERSION;
+        $diag['curl_exists'] = function_exists('curl_init');
+        
+        // Test: try to connect to localhost:8080
+        $localTest = [];
+        $localTest['target'] = 'localhost:8080';
+        $start = microtime(true);
+        $conn = @fsockopen('localhost', 8080, $errno, $errstr, 3);
+        $localTest['connect_time_ms'] = round((microtime(true) - $start) * 1000);
+        if ($conn) {
+            $localTest['reachable'] = true;
+            fclose($conn);
+        } else {
+            $localTest['reachable'] = false;
+            $localTest['error'] = "$errstr ($errno)";
+        }
+        $diag['localhost_8080'] = $localTest;
+        
+        echo json_encode($diag);
         break;
 
     default:
