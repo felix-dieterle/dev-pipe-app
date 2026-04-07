@@ -28,12 +28,12 @@ class AuthInterceptor @Inject constructor(
         if (response.code == 401) {
             logManager.error(
                 "AuthInterceptor",
-                "401 Unauthorized for ${safeUrl(request.url)} – check that the API token is correct"
+                "401 Unauthorized for ${safeUrl(request.url)} (token: ${maskedToken(token)}) – check that the API token is correct"
             )
         } else if (response.code >= 400) {
             logManager.warn(
                 "AuthInterceptor",
-                "HTTP ${response.code} received for ${safeUrl(request.url)}"
+                "HTTP ${response.code} received for ${safeUrl(request.url)} (token: ${maskedToken(token)})"
             )
         }
         return response
@@ -42,4 +42,16 @@ class AuthInterceptor @Inject constructor(
     /** Returns only scheme, host, port and path – drops query parameters to avoid leaking sensitive data. */
     private fun safeUrl(url: okhttp3.HttpUrl): String =
         "${url.scheme}://${url.host}:${url.port}${url.encodedPath}"
+
+    /**
+     * Returns the token with only the first and last character visible and the
+     * remaining characters replaced by asterisks, e.g. "a***z".
+     * Returns "<none>" if the token is null or blank.
+     */
+    private fun maskedToken(token: String?): String {
+        if (token.isNullOrBlank()) return "<none>"
+        if (token.length == 1) return token
+        if (token.length == 2) return "${token.first()}*"
+        return "${token.first()}${"*".repeat(token.length - 2)}${token.last()}"
+    }
 }
