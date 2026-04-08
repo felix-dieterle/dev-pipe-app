@@ -7,6 +7,7 @@
  *   ?action=set_url&url=  - Set dev-pipe URL
  *   ?action=get_ip        - Get cached public IP + timestamp
  *   ?action=set_ip&ip=   - Set public IP
+ *   ?action=get_lan_ip    - Get server LAN (local) IP address
  *   ?action=status        - Check dev-pipe status
  *   ?action=diag          - Diagnostic info
  *   ?action=log&lines=   - Get update log (last N lines)
@@ -108,6 +109,37 @@ function isValidIp(string $ip): bool
     return filter_var($ip, FILTER_VALIDATE_IP) !== false;
 }
 
+/**
+ * Determine the server's local LAN IP address.
+ *
+ * Tries hostname-based resolution first (most reliable for multi-NIC
+ * servers), then falls back to the web-server-provided SERVER_ADDR.
+ * Loopback addresses are skipped so the caller always receives a
+ * routable LAN address when one is available.
+ */
+function getLocalLanIp(): string
+{
+    $hostname = gethostname();
+    if ($hostname !== false) {
+        $ip = gethostbyname($hostname);
+        if (
+            $ip !== $hostname
+            && filter_var($ip, FILTER_VALIDATE_IP) !== false
+            && $ip !== '127.0.0.1'
+            && $ip !== '::1'
+        ) {
+            return $ip;
+        }
+    }
+
+    $serverAddr = $_SERVER['SERVER_ADDR'] ?? '';
+    if ($serverAddr && $serverAddr !== '127.0.0.1' && $serverAddr !== '::1') {
+        return $serverAddr;
+    }
+
+    return $serverAddr ?: 'unknown';
+}
+
 // Handle actions
 switch ($action) {
     case 'get_url':
@@ -193,6 +225,10 @@ switch ($action) {
         echo json_encode(['ip' => $meta['value'], 'updated' => $meta['updated']]);
         break;
 
+    case 'get_lan_ip':
+        echo json_encode(['ip' => getLocalLanIp(), 'type' => 'lan']);
+        break;
+
     case 'log':
         $lines = isset($_GET['lines']) ? max(1, min(100, (int)$_GET['lines'])) : 20;
         $log = @file_get_contents(LOG_FILE);
@@ -219,5 +255,5 @@ switch ($action) {
 
     default:
         http_response_code(400);
-        echo json_encode(['error' => 'Unknown action. Use: get_url, set_url, status, api_token']);
+        echo json_encode(['error' => 'Unknown action. Use: get_url, set_url, get_ip, set_ip, get_lan_ip, status, api_token']);
 }

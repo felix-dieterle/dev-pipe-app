@@ -7,6 +7,7 @@ import com.devpipe.app.data.model.DiscoveryStatusResponse
 import com.devpipe.app.data.model.HealthResponse
 import com.devpipe.app.data.model.IpResponse
 import com.devpipe.app.data.model.Job
+import com.devpipe.app.data.model.LanIpResponse
 import com.devpipe.app.data.model.Session
 import com.devpipe.app.data.model.SessionActionRequest
 import com.devpipe.app.data.model.StatusResponse
@@ -43,6 +44,9 @@ class DevPipeRepository @Inject constructor(
 
     suspend fun discoverIp(phpUrl: String, token: String): Result<IpResponse> =
         runCatching { phpApi.getIp(phpUrl, token) }
+
+    suspend fun discoverLanIp(phpUrl: String, token: String): Result<LanIpResponse> =
+        runCatching { phpApi.getLanIp(phpUrl, token) }
 
     suspend fun getDiscoveryStatus(phpUrl: String, token: String): Result<DiscoveryStatusResponse> =
         runCatching { phpApi.getDiscoveryStatus(phpUrl, token) }

@@ -2,6 +2,7 @@ package com.devpipe.app.data.api
 
 import com.devpipe.app.data.model.DiscoveryStatusResponse
 import com.devpipe.app.data.model.IpResponse
+import com.devpipe.app.data.model.LanIpResponse
 import com.devpipe.app.data.model.UrlResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -40,4 +41,12 @@ interface PhpDiscoveryApi {
         @Query("token") token: String,
         @Query("action") action: String = "status"
     ): DiscoveryStatusResponse
+
+    /** Fetches the server's local LAN IP address. */
+    @GET
+    suspend fun getLanIp(
+        @Url url: String,
+        @Query("token") token: String,
+        @Query("action") action: String = "get_lan_ip"
+    ): LanIpResponse
 }
