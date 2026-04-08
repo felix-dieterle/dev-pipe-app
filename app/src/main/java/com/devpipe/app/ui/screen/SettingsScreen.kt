@@ -120,6 +120,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
+                uiState.discoveredLanIp?.let { lanIp ->
+                    Text(
+                        "LAN IP: $lanIp",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
             HorizontalDivider()

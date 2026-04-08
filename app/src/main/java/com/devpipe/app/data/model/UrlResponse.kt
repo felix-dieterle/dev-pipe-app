@@ -12,6 +12,11 @@ data class IpResponse(
     @SerializedName("updated") val updated: String? = null
 )
 
+data class LanIpResponse(
+    @SerializedName("ip") val ip: String,
+    @SerializedName("type") val type: String? = null
+)
+
 data class DiscoveryStatusResponse(
     @SerializedName("status") val status: String,
     @SerializedName("url") val url: String? = null,

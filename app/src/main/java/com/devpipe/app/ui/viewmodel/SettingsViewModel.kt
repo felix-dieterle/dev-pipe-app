@@ -27,6 +27,7 @@ data class SettingsUiState(
     val discoveredUrlUpdated: String? = null,
     val discoveredIp: String? = null,
     val discoveredIpUpdated: String? = null,
+    val discoveredLanIp: String? = null,
     val discoveryServerStatus: String? = null
 )
 
@@ -87,6 +88,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { preferencesManager.saveTheme(theme) }
     }
 
+    companion object {
+        /** Default port used when constructing a fallback URL from a bare IP address. */
+        private const val FALLBACK_PORT = 8080
+    }
+
     fun discoverUrl() {
         val token = tokenManager.getToken() ?: run {
             val msg = "Auto-discovery failed: no API token configured"
@@ -105,38 +111,86 @@ class SettingsViewModel @Inject constructor(
             logManager.info("AutoDiscovery", "Starting discovery via $phpUrl")
             _uiState.value = SettingsUiState(discoveryInProgress = true)
 
-            // Fetch URL, IP, and server status in parallel
+            // Fetch URL, IP, LAN IP, and server status in parallel
             val urlDeferred = async { repository.discoverUrl(phpUrl, token) }
             val ipDeferred = async { repository.discoverIp(phpUrl, token) }
+            val lanIpDeferred = async { repository.discoverLanIp(phpUrl, token) }
             val statusDeferred = async { repository.getDiscoveryStatus(phpUrl, token) }
 
             val urlResult = urlDeferred.await()
             val ipResult = ipDeferred.await()
+            val lanIpResult = lanIpDeferred.await()
             val statusResult = statusDeferred.await()
+
+            val lanIpResponse = lanIpResult.onFailure { e ->
+                logManager.warn("AutoDiscovery", "LAN IP fetch failed: ${e.message}")
+            }.getOrNull()
+
+            // Persist the LAN IP whenever we successfully retrieve it so the
+            // app can use it as a last-resort fallback in subsequent sessions.
+            lanIpResponse?.ip?.let { preferencesManager.saveLanIp(it) }
 
             urlResult.fold(
                 onSuccess = { response ->
-                    preferencesManager.saveBackendUrl(response.url)
-                    logManager.info("AutoDiscovery", "Discovery succeeded – backend URL: ${response.url}, updated: ${response.updated}")
                     val ipResponse = ipResult.onFailure { e ->
                         logManager.warn("AutoDiscovery", "IP fetch failed: ${e.message}")
                     }.getOrNull()
                     val serverStatus = statusResult.onFailure { e ->
                         logManager.warn("AutoDiscovery", "Status fetch failed: ${e.message}")
                     }.getOrNull()
+
+                    // If the server reports itself as offline at the discovered URL,
+                    // and we have a LAN IP, fall back to it (handles hairpin-NAT / stale
+                    // dynamic-DNS scenarios when the device is on the same LAN).
+                    val lanIp = lanIpResponse?.ip
+                    val effectiveUrl = if (serverStatus?.isOnline == false && !lanIp.isNullOrEmpty()) {
+                        val lanFallback = "http://$lanIp:$FALLBACK_PORT/"
+                        logManager.info(
+                            "AutoDiscovery",
+                            "Server offline at ${response.url}; falling back to LAN IP: $lanFallback"
+                        )
+                        preferencesManager.saveBackendUrl(lanFallback)
+                        lanFallback
+                    } else {
+                        preferencesManager.saveBackendUrl(response.url)
+                        logManager.info(
+                            "AutoDiscovery",
+                            "Discovery succeeded – backend URL: ${response.url}, updated: ${response.updated}"
+                        )
+                        response.url
+                    }
+
                     _uiState.value = SettingsUiState(
                         discoverySuccess = true,
-                        discoveredUrl = response.url,
+                        discoveredUrl = effectiveUrl,
                         discoveredUrlUpdated = formatTimestamp(response.updated),
                         discoveredIp = ipResponse?.ip,
                         discoveredIpUpdated = formatTimestamp(ipResponse?.updated),
+                        discoveredLanIp = lanIpResponse?.ip,
                         discoveryServerStatus = serverStatus?.status
                     )
                 },
                 onFailure = { e ->
-                    val msg = e.message ?: "Unknown error"
-                    logManager.error("AutoDiscovery", "Discovery failed: $msg")
-                    _uiState.value = SettingsUiState(discoveryError = msg)
+                    // URL discovery failed – try LAN IP as a last-resort fallback.
+                    val lanIp = lanIpResponse?.ip
+                    if (!lanIp.isNullOrEmpty()) {
+                        val lanFallback = "http://$lanIp:$FALLBACK_PORT/"
+                        preferencesManager.saveBackendUrl(lanFallback)
+                        logManager.info(
+                            "AutoDiscovery",
+                            "URL discovery failed; using LAN IP fallback: $lanFallback"
+                        )
+                        _uiState.value = SettingsUiState(
+                            discoverySuccess = true,
+                            discoveredUrl = lanFallback,
+                            discoveredLanIp = lanIp,
+                            discoveryServerStatus = null
+                        )
+                    } else {
+                        val msg = e.message ?: "Unknown error"
+                        logManager.error("AutoDiscovery", "Discovery failed: $msg")
+                        _uiState.value = SettingsUiState(discoveryError = msg)
+                    }
                 }
             )
         }
