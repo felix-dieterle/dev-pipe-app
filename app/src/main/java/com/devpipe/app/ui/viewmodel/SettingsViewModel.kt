@@ -7,6 +7,7 @@ import com.devpipe.app.data.repository.DevPipeRepository
 import com.devpipe.app.data.storage.PreferencesManager
 import com.devpipe.app.data.storage.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,11 @@ data class SettingsUiState(
     val discoveryInProgress: Boolean = false,
     val discoveryError: String? = null,
     val discoverySuccess: Boolean = false,
-    val discoveredUrl: String? = null
+    val discoveredUrl: String? = null,
+    val discoveredUrlUpdated: String? = null,
+    val discoveredIp: String? = null,
+    val discoveredIpUpdated: String? = null,
+    val discoveryServerStatus: String? = null
 )
 
 @HiltViewModel
@@ -96,11 +101,34 @@ class SettingsViewModel @Inject constructor(
             }
             logManager.info("AutoDiscovery", "Starting discovery via $phpUrl")
             _uiState.value = SettingsUiState(discoveryInProgress = true)
-            repository.discoverUrl(phpUrl, token).fold(
+
+            // Fetch URL, IP, and server status in parallel
+            val urlDeferred = async { repository.discoverUrl(phpUrl, token) }
+            val ipDeferred = async { repository.discoverIp(phpUrl, token) }
+            val statusDeferred = async { repository.getDiscoveryStatus(phpUrl, token) }
+
+            val urlResult = urlDeferred.await()
+            val ipResult = ipDeferred.await()
+            val statusResult = statusDeferred.await()
+
+            urlResult.fold(
                 onSuccess = { response ->
                     preferencesManager.saveBackendUrl(response.url)
-                    logManager.info("AutoDiscovery", "Discovery succeeded – backend URL: ${response.url}")
-                    _uiState.value = SettingsUiState(discoverySuccess = true, discoveredUrl = response.url)
+                    logManager.info("AutoDiscovery", "Discovery succeeded – backend URL: ${response.url}, updated: ${response.updated}")
+                    val ipResponse = ipResult.onFailure { e ->
+                        logManager.warn("AutoDiscovery", "IP fetch failed: ${e.message}")
+                    }.getOrNull()
+                    val serverStatus = statusResult.onFailure { e ->
+                        logManager.warn("AutoDiscovery", "Status fetch failed: ${e.message}")
+                    }.getOrNull()
+                    _uiState.value = SettingsUiState(
+                        discoverySuccess = true,
+                        discoveredUrl = response.url,
+                        discoveredUrlUpdated = response.updated,
+                        discoveredIp = ipResponse?.ip,
+                        discoveredIpUpdated = ipResponse?.updated,
+                        discoveryServerStatus = serverStatus?.status
+                    )
                 },
                 onFailure = { e ->
                     val msg = e.message ?: "Unknown error"

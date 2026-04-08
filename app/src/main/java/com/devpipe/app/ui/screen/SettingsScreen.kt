@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpipe.app.data.model.DiscoveryStatusResponse
 import com.devpipe.app.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,6 +99,27 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall
                 )
+                uiState.discoveredUrlUpdated?.let {
+                    Text(
+                        "URL last set: $it",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                uiState.discoveryServerStatus?.let {
+                    Text(
+                        "Server status: $it",
+                        color = if (it == DiscoveryStatusResponse.STATUS_ONLINE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                uiState.discoveredIp?.let { ip ->
+                    Text(
+                        "Public IP: $ip" + (uiState.discoveredIpUpdated?.let { " (updated: $it)" } ?: ""),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
             HorizontalDivider()
