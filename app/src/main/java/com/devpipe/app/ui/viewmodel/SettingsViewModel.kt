@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -124,9 +127,9 @@ class SettingsViewModel @Inject constructor(
                     _uiState.value = SettingsUiState(
                         discoverySuccess = true,
                         discoveredUrl = response.url,
-                        discoveredUrlUpdated = response.updated,
+                        discoveredUrlUpdated = formatTimestamp(response.updated),
                         discoveredIp = ipResponse?.ip,
-                        discoveredIpUpdated = ipResponse?.updated,
+                        discoveredIpUpdated = formatTimestamp(ipResponse?.updated),
                         discoveryServerStatus = serverStatus?.status
                     )
                 },
@@ -137,5 +140,23 @@ class SettingsViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    private fun formatTimestamp(updated: String?): String? {
+        if (updated == null) return null
+        val displayFormat = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
+        // Try ISO 8601 format (e.g. "2026-04-08T18:52:31+00:00")
+        for (pattern in listOf("yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss'Z'")) {
+            try {
+                val date = SimpleDateFormat(pattern, Locale.US).parse(updated)
+                if (date != null) return displayFormat.format(date)
+            } catch (_: java.text.ParseException) {}
+        }
+        // Try Unix timestamp in seconds
+        try {
+            val epochSeconds = updated.toLong()
+            return displayFormat.format(Date(epochSeconds * 1000))
+        } catch (_: NumberFormatException) {}
+        return updated
     }
 }
