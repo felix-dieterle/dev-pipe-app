@@ -3,7 +3,9 @@ package com.devpipe.app.data.repository
 import com.devpipe.app.data.api.DevPipeApi
 import com.devpipe.app.data.api.PhpDiscoveryApi
 import com.devpipe.app.data.model.CreateSessionRequest
+import com.devpipe.app.data.model.DiscoveryStatusResponse
 import com.devpipe.app.data.model.HealthResponse
+import com.devpipe.app.data.model.IpResponse
 import com.devpipe.app.data.model.Job
 import com.devpipe.app.data.model.Session
 import com.devpipe.app.data.model.SessionActionRequest
@@ -38,4 +40,10 @@ class DevPipeRepository @Inject constructor(
 
     suspend fun discoverUrl(phpUrl: String, token: String): Result<UrlResponse> =
         runCatching { phpApi.getUrl(phpUrl, token) }
+
+    suspend fun discoverIp(phpUrl: String, token: String): Result<IpResponse> =
+        runCatching { phpApi.getIp(phpUrl, token) }
+
+    suspend fun getDiscoveryStatus(phpUrl: String, token: String): Result<DiscoveryStatusResponse> =
+        runCatching { phpApi.getDiscoveryStatus(phpUrl, token) }
 }

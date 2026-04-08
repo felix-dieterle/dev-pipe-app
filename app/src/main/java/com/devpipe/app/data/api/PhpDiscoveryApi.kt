@@ -1,5 +1,7 @@
 package com.devpipe.app.data.api
 
+import com.devpipe.app.data.model.DiscoveryStatusResponse
+import com.devpipe.app.data.model.IpResponse
 import com.devpipe.app.data.model.UrlResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -22,4 +24,20 @@ interface PhpDiscoveryApi {
         @Query("token") token: String,
         @Query("action") action: String = "get_url"
     ): UrlResponse
+
+    /** Fetches the cached public IP address together with its last-updated timestamp. */
+    @GET
+    suspend fun getIp(
+        @Url url: String,
+        @Query("token") token: String,
+        @Query("action") action: String = "get_ip"
+    ): IpResponse
+
+    /** Checks whether the Dev-Pipe server is reachable and returns its status. */
+    @GET
+    suspend fun getDiscoveryStatus(
+        @Url url: String,
+        @Query("token") token: String,
+        @Query("action") action: String = "status"
+    ): DiscoveryStatusResponse
 }
