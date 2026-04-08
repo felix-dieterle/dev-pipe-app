@@ -32,6 +32,10 @@ class PreferencesManager @Inject constructor(
         prefs[KEY_PHP_DISCOVERY_URL] ?: ""
     }
 
+    val phpDiscoveryToken: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_PHP_DISCOVERY_TOKEN] ?: ""
+    }
+
     val lanIp: Flow<String> = dataStore.data.map { prefs ->
         prefs[KEY_LAN_IP] ?: ""
     }
@@ -48,6 +52,10 @@ class PreferencesManager @Inject constructor(
         dataStore.edit { prefs -> prefs[KEY_PHP_DISCOVERY_URL] = url }
     }
 
+    suspend fun savePhpDiscoveryToken(token: String) {
+        dataStore.edit { prefs -> prefs[KEY_PHP_DISCOVERY_TOKEN] = token }
+    }
+
     suspend fun saveLanIp(ip: String) {
         dataStore.edit { prefs -> prefs[KEY_LAN_IP] = ip }
     }
@@ -56,6 +64,7 @@ class PreferencesManager @Inject constructor(
         private val KEY_BACKEND_URL = stringPreferencesKey("backend_url")
         private val KEY_THEME = stringPreferencesKey("theme")
         private val KEY_PHP_DISCOVERY_URL = stringPreferencesKey("php_discovery_url")
+        private val KEY_PHP_DISCOVERY_TOKEN = stringPreferencesKey("php_discovery_token")
         private val KEY_LAN_IP = stringPreferencesKey("lan_ip")
         const val DEFAULT_BACKEND_URL = "http://localhost:8080/"
     }

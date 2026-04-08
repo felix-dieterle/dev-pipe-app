@@ -28,7 +28,8 @@ data class SettingsUiState(
     val discoveredIp: String? = null,
     val discoveredIpUpdated: String? = null,
     val discoveredLanIp: String? = null,
-    val discoveryServerStatus: String? = null
+    val discoveryServerStatus: String? = null,
+    val apiTokenFetchedFromDiscovery: Boolean = false
 )
 
 @HiltViewModel
@@ -45,6 +46,9 @@ class SettingsViewModel @Inject constructor(
     val phpDiscoveryUrl: StateFlow<String> = preferencesManager.phpDiscoveryUrl
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
+    val phpDiscoveryToken: StateFlow<String> = preferencesManager.phpDiscoveryToken
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
     val theme: StateFlow<String> = preferencesManager.theme
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "system")
 
@@ -56,11 +60,18 @@ class SettingsViewModel @Inject constructor(
     fun saveToken(token: String) {
         tokenManager.saveToken(token)
         logManager.info("Settings", "API token updated")
-        // Auto-trigger discovery if a PHP discovery URL is already configured
-        val phpUrl = phpDiscoveryUrl.value
-        if (phpUrl.isNotBlank() && token.isNotBlank()) {
-            logManager.info("Settings", "Token changed – re-running auto-discovery")
-            discoverUrl()
+    }
+
+    fun savePhpDiscoveryToken(token: String) {
+        viewModelScope.launch {
+            preferencesManager.savePhpDiscoveryToken(token)
+            logManager.info("Settings", "PHP discovery token updated")
+            // Auto-trigger discovery if a discovery URL is already configured
+            val phpUrl = phpDiscoveryUrl.value
+            if (phpUrl.isNotBlank() && token.isNotBlank()) {
+                logManager.info("Settings", "Discovery token changed – re-running auto-discovery")
+                discoverUrl()
+            }
         }
     }
 
@@ -76,8 +87,8 @@ class SettingsViewModel @Inject constructor(
             preferencesManager.savePhpDiscoveryUrl(url)
             logManager.info("Settings", "PHP discovery URL set to: $url")
             // Auto-trigger discovery if a token is already configured
-            val token = tokenManager.getToken()
-            if (url.isNotBlank() && !token.isNullOrBlank()) {
+            val token = preferencesManager.phpDiscoveryToken.first()
+            if (url.isNotBlank() && token.isNotBlank()) {
                 logManager.info("Settings", "Discovery URL changed – re-running auto-discovery")
                 discoverUrl()
             }
@@ -94,33 +105,51 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun discoverUrl() {
-        val token = tokenManager.getToken() ?: run {
-            val msg = "Auto-discovery failed: no API token configured"
-            logManager.error("AutoDiscovery", msg)
-            _uiState.value = SettingsUiState(discoveryError = "No API token configured")
-            return
-        }
         viewModelScope.launch {
             val phpUrl = preferencesManager.phpDiscoveryUrl.first()
+            val discoveryToken = preferencesManager.phpDiscoveryToken.first()
+
             if (phpUrl.isBlank()) {
                 val msg = "Auto-discovery failed: no PHP discovery URL configured"
                 logManager.error("AutoDiscovery", msg)
                 _uiState.value = SettingsUiState(discoveryError = "No PHP discovery URL configured")
                 return@launch
             }
+            if (discoveryToken.isBlank()) {
+                val msg = "Auto-discovery failed: no PHP discovery token configured"
+                logManager.error("AutoDiscovery", msg)
+                _uiState.value = SettingsUiState(discoveryError = "No PHP discovery token configured")
+                return@launch
+            }
+
             logManager.info("AutoDiscovery", "Starting discovery via $phpUrl")
             _uiState.value = SettingsUiState(discoveryInProgress = true)
 
-            // Fetch URL, IP, LAN IP, and server status in parallel
-            val urlDeferred = async { repository.discoverUrl(phpUrl, token) }
-            val ipDeferred = async { repository.discoverIp(phpUrl, token) }
-            val lanIpDeferred = async { repository.discoverLanIp(phpUrl, token) }
-            val statusDeferred = async { repository.getDiscoveryStatus(phpUrl, token) }
+            // Fetch URL, IP, LAN IP, server status, and API token in parallel
+            val urlDeferred = async { repository.discoverUrl(phpUrl, discoveryToken) }
+            val ipDeferred = async { repository.discoverIp(phpUrl, discoveryToken) }
+            val lanIpDeferred = async { repository.discoverLanIp(phpUrl, discoveryToken) }
+            val statusDeferred = async { repository.getDiscoveryStatus(phpUrl, discoveryToken) }
+            val apiTokenDeferred = async { repository.fetchApiToken(phpUrl, discoveryToken) }
 
             val urlResult = urlDeferred.await()
             val ipResult = ipDeferred.await()
             val lanIpResult = lanIpDeferred.await()
             val statusResult = statusDeferred.await()
+            val apiTokenResult = apiTokenDeferred.await()
+
+            // Auto-save the Dev-Pipe API token if successfully retrieved
+            val apiTokenFetched = apiTokenResult.fold(
+                onSuccess = { response ->
+                    tokenManager.saveToken(response.token)
+                    logManager.info("AutoDiscovery", "API token fetched and saved from discovery endpoint")
+                    true
+                },
+                onFailure = { e ->
+                    logManager.warn("AutoDiscovery", "API token fetch failed: ${e.message}")
+                    false
+                }
+            )
 
             val lanIpResponse = lanIpResult.onFailure { e ->
                 logManager.warn("AutoDiscovery", "LAN IP fetch failed: ${e.message}")
@@ -167,7 +196,8 @@ class SettingsViewModel @Inject constructor(
                         discoveredIp = ipResponse?.ip,
                         discoveredIpUpdated = formatTimestamp(ipResponse?.updated),
                         discoveredLanIp = lanIpResponse?.ip,
-                        discoveryServerStatus = serverStatus?.status
+                        discoveryServerStatus = serverStatus?.status,
+                        apiTokenFetchedFromDiscovery = apiTokenFetched
                     )
                 },
                 onFailure = { e ->
@@ -184,7 +214,8 @@ class SettingsViewModel @Inject constructor(
                             discoverySuccess = true,
                             discoveredUrl = lanFallback,
                             discoveredLanIp = lanIp,
-                            discoveryServerStatus = null
+                            discoveryServerStatus = null,
+                            apiTokenFetchedFromDiscovery = apiTokenFetched
                         )
                     } else {
                         val msg = e.message ?: "Unknown error"
