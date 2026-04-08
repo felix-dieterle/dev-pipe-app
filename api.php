@@ -2,16 +2,15 @@
 /**
  * Dev-Pipe URL Discovery API
  *
- * Place this at: public/apps/devpipe/api.php
- * 
  * Endpoints:
- *   ?action=get_url       - Get dev-pipe URL
+ *   ?action=get_url       - Get dev-pipe URL + timestamp
  *   ?action=set_url&url=  - Set dev-pipe URL
+ *   ?action=get_ip        - Get cached public IP + timestamp
+ *   ?action=set_ip&ip=   - Set public IP
  *   ?action=status        - Check dev-pipe status
+ *   ?action=diag          - Diagnostic info
+ *   ?action=log&lines=   - Get update log (last N lines)
  *   ?action=api_token     - Get API token for app
- *   ?action=diag          - Diagnostic info & port test
- *   ?action=get_ip        - Get cached public IP
- *   ?action=set_ip&ip=    - Set public IP
  */
 
 // Configuration
@@ -20,6 +19,7 @@ define('DEV_PIPE_API_TOKEN', 'devpipe-app-token-2026');
 define('DEV_PIPE_DEFAULT_URL', 'http://localhost:8080');
 define('URL_CACHE_FILE', __DIR__ . '/url_cache.txt');
 define('IP_CACHE_FILE', __DIR__ . '/ip_cache.txt');
+define('LOG_FILE', __DIR__ . '/update_log.txt');
 
 header('Content-Type: application/json');
 
@@ -40,8 +40,40 @@ if (!hash_equals(DEV_PIPE_TOKEN, $token)) {
  */
 function getCachedUrl(): string
 {
-    $url = @file_get_contents(URL_CACHE_FILE);
-    return ($url !== false) ? trim($url) : DEV_PIPE_DEFAULT_URL;
+    $data = @file_get_contents(URL_CACHE_FILE);
+    if ($data !== false) {
+        $decoded = json_decode($data, true);
+        if (is_array($decoded) && isset($decoded['url'])) {
+            return $decoded['url'];
+        }
+        return trim($data);
+    }
+    return DEV_PIPE_DEFAULT_URL;
+}
+
+function getCacheMeta(string $file): array
+{
+    $data = @file_get_contents($file);
+    if ($data !== false) {
+        $decoded = json_decode($data, true);
+        if (is_array($decoded) && isset($decoded['updated'])) {
+            return ['value' => $decoded['url'] ?? $decoded['ip'] ?? '', 'updated' => $decoded['updated']];
+        }
+        return ['value' => trim($data), 'updated' => @filemtime($file) ?: time()];
+    }
+    return ['value' => '', 'updated' => null];
+}
+
+function writeCacheWithMeta(string $file, string $value): bool
+{
+    $data = json_encode(['url' => $value, 'ip' => $value, 'updated' => date('c')]);
+    return file_put_contents($file, $data) !== false;
+}
+
+function logUpdate(string $type, string $value): void
+{
+    $entry = date('Y-m-d H:i:s') . " [$type] $value\n";
+    @file_put_contents(LOG_FILE, $entry, FILE_APPEND);
 }
 
 /**
@@ -60,8 +92,15 @@ function isValidUrl(string $url): bool
 
 function getCachedIp(): string
 {
-    $ip = @file_get_contents(IP_CACHE_FILE);
-    return ($ip !== false) ? trim($ip) : '';
+    $data = @file_get_contents(IP_CACHE_FILE);
+    if ($data !== false) {
+        $decoded = json_decode($data, true);
+        if (is_array($decoded) && isset($decoded['ip'])) {
+            return $decoded['ip'];
+        }
+        return trim($data);
+    }
+    return '';
 }
 
 function isValidIp(string $ip): bool
@@ -72,7 +111,8 @@ function isValidIp(string $ip): bool
 // Handle actions
 switch ($action) {
     case 'get_url':
-        echo json_encode(['url' => getCachedUrl()]);
+        $meta = getCacheMeta(URL_CACHE_FILE);
+        echo json_encode(['url' => $meta['value'] ?: DEV_PIPE_DEFAULT_URL, 'updated' => $meta['updated']]);
         break;
 
     case 'set_url':
@@ -86,8 +126,9 @@ switch ($action) {
             echo json_encode(['error' => 'Invalid URL - must be http:// or https://']);
             break;
         }
-        file_put_contents(URL_CACHE_FILE, $newUrl);
-        echo json_encode(['success' => true, 'url' => $newUrl]);
+        writeCacheWithMeta(URL_CACHE_FILE, $newUrl);
+        logUpdate('URL', $newUrl);
+        echo json_encode(['success' => true, 'url' => $newUrl, 'updated' => date('c')]);
         break;
         
     case 'api_token':
@@ -148,7 +189,15 @@ switch ($action) {
         break;
 
     case 'get_ip':
-        echo json_encode(['ip' => getCachedIp()]);
+        $meta = getCacheMeta(IP_CACHE_FILE);
+        echo json_encode(['ip' => $meta['value'], 'updated' => $meta['updated']]);
+        break;
+
+    case 'log':
+        $lines = isset($_GET['lines']) ? max(1, min(100, (int)$_GET['lines'])) : 20;
+        $log = @file_get_contents(LOG_FILE);
+        $entries = $log ? array_slice(array_filter(explode("\n", trim($log))), -$lines) : [];
+        echo json_encode(['entries' => $entries]);
         break;
 
     case 'set_ip':
@@ -163,8 +212,9 @@ switch ($action) {
             echo json_encode(['error' => 'Invalid IP address']);
             break;
         }
-        file_put_contents(IP_CACHE_FILE, $newIp);
-        echo json_encode(['success' => true, 'ip' => $newIp]);
+        writeCacheWithMeta(IP_CACHE_FILE, $newIp);
+        logUpdate('IP', $newIp);
+        echo json_encode(['success' => true, 'ip' => $newIp, 'updated' => date('c')]);
         break;
 
     default:
