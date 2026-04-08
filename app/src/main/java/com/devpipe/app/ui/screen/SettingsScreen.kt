@@ -23,13 +23,22 @@ import com.devpipe.app.ui.viewmodel.SettingsViewModel
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val backendUrl by viewModel.backendUrl.collectAsStateWithLifecycle()
     val phpDiscoveryUrl by viewModel.phpDiscoveryUrl.collectAsStateWithLifecycle()
+    val phpDiscoveryToken by viewModel.phpDiscoveryToken.collectAsStateWithLifecycle()
     val theme by viewModel.theme.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     var backendUrlInput by remember(backendUrl) { mutableStateOf(backendUrl) }
     var phpUrlInput by remember(phpDiscoveryUrl) { mutableStateOf(phpDiscoveryUrl) }
+    var phpTokenInput by remember(phpDiscoveryToken) { mutableStateOf(phpDiscoveryToken) }
     var tokenInput by remember { mutableStateOf(viewModel.getToken()) }
     var tokenVisible by remember { mutableStateOf(false) }
+
+    // Refresh the API token field whenever discovery auto-fetches a new token
+    LaunchedEffect(uiState.apiTokenFetchedFromDiscovery) {
+        if (uiState.apiTokenFetchedFromDiscovery) {
+            tokenInput = viewModel.getToken()
+        }
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings") }) }
@@ -71,11 +80,24 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+            OutlinedTextField(
+                value = phpTokenInput,
+                onValueChange = { phpTokenInput = it },
+                label = { Text("PHP Discovery Token") },
+                placeholder = { Text("mamarazzi-app-token-2026") },
+                supportingText = { Text("Token for the PHP discovery endpoint (DEV_PIPE_TOKEN in api.php). Used to fetch the backend URL and auto-retrieve the Dev-Pipe API token.") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { viewModel.savePhpDiscoveryUrl(phpUrlInput.trim()) },
+                    onClick = {
+                        viewModel.savePhpDiscoveryUrl(phpUrlInput.trim())
+                        viewModel.savePhpDiscoveryToken(phpTokenInput.trim())
+                    },
                     modifier = Modifier.weight(1f)
-                ) { Text("Save URL") }
+                ) { Text("Save") }
                 OutlinedButton(
                     onClick = { viewModel.discoverUrl() },
                     modifier = Modifier.weight(1f),
@@ -99,6 +121,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall
                 )
+                if (uiState.apiTokenFetchedFromDiscovery) {
+                    Text(
+                        "API token fetched and saved automatically",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 uiState.discoveredUrlUpdated?.let {
                     Text(
                         "URL last set: $it",
@@ -136,8 +165,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             OutlinedTextField(
                 value = tokenInput,
                 onValueChange = { tokenInput = it },
-                label = { Text("API Token") },
-                supportingText = { Text("Your Dev-Pipe API token. Find it in your server's configuration or admin panel.") },
+                label = { Text("Dev-Pipe API Token") },
+                supportingText = { Text("Token for the Dev-Pipe server (sent as Bearer token). Auto-populated when you use Discover above.") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),

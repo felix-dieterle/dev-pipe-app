@@ -1,5 +1,6 @@
 package com.devpipe.app.data.api
 
+import com.devpipe.app.data.model.ApiTokenResponse
 import com.devpipe.app.data.model.DiscoveryStatusResponse
 import com.devpipe.app.data.model.IpResponse
 import com.devpipe.app.data.model.LanIpResponse
@@ -49,4 +50,17 @@ interface PhpDiscoveryApi {
         @Query("token") token: String,
         @Query("action") action: String = "get_lan_ip"
     ): LanIpResponse
+
+    /**
+     * Fetches the Dev-Pipe API token from the PHP discovery endpoint.
+     * This is the token used to authenticate requests to the Dev-Pipe server
+     * (sent as `Authorization: Bearer <token>`), distinct from the PHP discovery
+     * token used to access the PHP endpoint itself.
+     */
+    @GET
+    suspend fun getApiToken(
+        @Url url: String,
+        @Query("token") token: String,
+        @Query("action") action: String = "api_token"
+    ): ApiTokenResponse
 }

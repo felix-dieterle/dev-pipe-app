@@ -28,3 +28,7 @@ data class DiscoveryStatusResponse(
         const val STATUS_ONLINE = "online"
     }
 }
+
+data class ApiTokenResponse(
+    @SerializedName("token") val token: String
+)
