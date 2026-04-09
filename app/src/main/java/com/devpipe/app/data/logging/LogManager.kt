@@ -32,19 +32,48 @@ class LogManager @Inject constructor(
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
+        // Seed the counter from the last persisted entry ID so that IDs assigned during
+        // this session are always greater than those from previous sessions. This prevents
+        // ID collisions when we later merge the file entries with any entries that were
+        // logged during app startup (before loadFromFile completes).
+        try {
+            if (logFile.exists()) {
+                logFile.useLines { lines ->
+                    lines.lastOrNull { it.isNotBlank() }
+                        ?.split("|", limit = 2)
+                        ?.firstOrNull()
+                        ?.toLongOrNull()
+                }?.let { lastId -> counter.set(lastId) }
+            }
+        } catch (e: Exception) {
+            Log.e("LogManager", "Failed to pre-read counter from file: ${e.message}")
+        }
         ioScope.launch { loadFromFile() }
     }
 
     private fun loadFromFile() {
         try {
             if (!logFile.exists()) return
-            val entries = logFile.readLines()
+            val fileEntries = logFile.readLines()
                 .mapNotNull { parseLine(it) }
                 .takeLast(maxEntries)
                 .reversed()
-            if (entries.isNotEmpty()) {
-                counter.set(entries.maxOf { it.id })
-                _logs.value = entries
+            if (fileEntries.isEmpty()) return
+            val maxId = fileEntries.maxOf { it.id }
+            // Ensure counter is at least as large as the highest file entry ID.
+            counter.updateAndGet { maxOf(it, maxId) }
+            // Merge: keep any entries already in memory (logged during this session,
+            // IDs > maxId because counter was seeded above) then append file entries.
+            // This avoids overwriting startup log entries with the historical file data.
+            _logs.update { current ->
+                if (current.isEmpty()) {
+                    fileEntries
+                } else {
+                    buildList {
+                        addAll(current)
+                        addAll(fileEntries)
+                    }.take(maxEntries)
+                }
             }
         } catch (e: Exception) {
             Log.e("LogManager", "Failed to load logs from file: ${e.message}")
