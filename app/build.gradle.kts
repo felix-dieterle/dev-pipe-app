@@ -13,7 +13,7 @@ android {
         applicationId = "com.devpipe.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = (System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1)
         versionName = "1.0"
     }
 

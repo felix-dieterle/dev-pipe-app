@@ -67,6 +67,7 @@ jobs:
           KEY_ALIAS: ${{ steps.keystore.outputs.ks_alias }}
           KEY_PASSWORD: ${{ steps.keystore.outputs.ks_key_password }}
           KEYSTORE_TYPE: ${{ steps.keystore.outputs.ks_type }}
+          BUILD_NUMBER: ${{ github.run_number }}
 
       - name: Determine version name
         id: version
