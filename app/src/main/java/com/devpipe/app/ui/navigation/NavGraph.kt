@@ -68,7 +68,9 @@ fun NavGraph() {
             composable(Screen.Sessions.route) {
                 SessionsScreen(
                     onSessionClick = { id ->
-                        navController.navigate("session_detail/${Uri.encode(id)}")
+                        if (id.isNotBlank()) {
+                            navController.navigate("session_detail/${Uri.encode(id)}")
+                        }
                     },
                     onCreateClick = {
                         navController.navigate("create_session")
