@@ -2,6 +2,7 @@ package com.devpipe.app.di
 
 import com.devpipe.app.data.api.DevPipeApi
 import com.devpipe.app.data.api.PhpDiscoveryApi
+import com.devpipe.app.data.logging.LogManager
 import com.devpipe.app.data.repository.DevPipeRepository
 import com.devpipe.app.data.storage.PreferencesManager
 import dagger.Module
@@ -76,7 +77,8 @@ object AppModule {
     @Singleton
     fun provideDevPipeRepository(
         api: DevPipeApi,
-        phpApi: PhpDiscoveryApi
-    ): DevPipeRepository = DevPipeRepository(api, phpApi)
+        phpApi: PhpDiscoveryApi,
+        logManager: LogManager
+    ): DevPipeRepository = DevPipeRepository(api, phpApi, logManager)
 }
 
