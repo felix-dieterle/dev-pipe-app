@@ -57,7 +57,8 @@ class SessionDetailViewModel @Inject constructor(
                 val allJobs = jobsResult.getOrNull() ?: emptyList()
                 val sessionJobs = session?.let { s ->
                     val sessionName = s.name.orEmpty()
-                    allJobs.filter { it.name?.contains(sessionName, ignoreCase = true) == true }
+                    if (sessionName.isEmpty()) emptyList()
+                    else allJobs.filter { it.name?.contains(sessionName, ignoreCase = true) == true }
                 } ?: emptyList()
                 _uiState.value = SessionDetailUiState(
                     session = session,

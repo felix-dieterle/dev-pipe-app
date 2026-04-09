@@ -1,6 +1,7 @@
 package com.devpipe.app.ui.navigation
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -74,7 +75,7 @@ fun NavGraph() {
                                     launchSingleTop = true
                                 }
                             } catch (e: Exception) {
-                                // ignore navigation errors
+                                Log.e("NavGraph", "Navigation to session $id failed", e)
                             }
                         }
                     },
