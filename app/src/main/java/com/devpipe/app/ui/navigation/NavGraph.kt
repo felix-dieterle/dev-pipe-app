@@ -69,7 +69,7 @@ fun NavGraph() {
                 SessionsScreen(
                     onSessionClick = { id ->
                         if (id.isNotBlank()) {
-                            navController.navigate("session_detail/${Uri.encode(id)}")
+                            navController.navigate("session_detail?sessionId=${Uri.encode(id)}")
                         }
                     },
                     onCreateClick = {
@@ -84,8 +84,8 @@ fun NavGraph() {
                 LogsScreen()
             }
             composable(
-                route = "session_detail/{sessionId}",
-                arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+                route = "session_detail?sessionId={sessionId}",
+                arguments = listOf(navArgument("sessionId") { type = NavType.StringType; nullable = true })
             ) {
                 SessionDetailScreen(
                     onBack = { navController.popBackStack() }
