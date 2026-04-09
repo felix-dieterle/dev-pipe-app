@@ -69,14 +69,14 @@ fun NavGraph() {
             composable(Screen.Sessions.route) {
                 SessionsScreen(
                     onSessionClick = { id ->
-                        if (id.isNotBlank()) {
-                            try {
+                        try {
+                            if (!id.isNullOrBlank()) {
                                 navController.navigate("session_detail?sessionId=${Uri.encode(id)}") {
                                     launchSingleTop = true
                                 }
-                            } catch (e: Exception) {
-                                Log.e("NavGraph", "Navigation to session $id failed", e)
                             }
+                        } catch (e: Exception) {
+                            Log.e("NavGraph", "Navigation to session ${id ?: "null"} failed", e)
                         }
                     },
                     onCreateClick = {
