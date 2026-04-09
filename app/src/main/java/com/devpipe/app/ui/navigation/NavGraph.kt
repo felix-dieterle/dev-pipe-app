@@ -1,5 +1,6 @@
 package com.devpipe.app.ui.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -67,7 +68,7 @@ fun NavGraph() {
             composable(Screen.Sessions.route) {
                 SessionsScreen(
                     onSessionClick = { id ->
-                        navController.navigate("session_detail/$id")
+                        navController.navigate("session_detail/${Uri.encode(id)}")
                     },
                     onCreateClick = {
                         navController.navigate("create_session")

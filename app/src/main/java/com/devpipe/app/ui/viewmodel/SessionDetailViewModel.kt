@@ -29,23 +29,28 @@ class SessionDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val sessionId: String = checkNotNull(savedStateHandle["sessionId"])
+    private val sessionId: String? = savedStateHandle["sessionId"]
 
     private val _uiState = MutableStateFlow(SessionDetailUiState())
     val uiState: StateFlow<SessionDetailUiState> = _uiState
 
     init {
-        load()
+        if (sessionId != null) {
+            load()
+        } else {
+            _uiState.value = SessionDetailUiState(error = "Session ID missing")
+        }
     }
 
     fun load() {
+        val id = sessionId ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            val sessionResult = repository.getSession(sessionId)
+            val sessionResult = repository.getSession(id)
             val jobsResult = repository.getJobs()
             val error = sessionResult.exceptionOrNull()?.message
             if (error != null) {
-                logManager.error("SessionDetail", "Load failed for session $sessionId: $error")
+                logManager.error("SessionDetail", "Load failed for session $id: $error")
             }
             val session = sessionResult.getOrNull()
             val allJobs = jobsResult.getOrNull() ?: emptyList()
@@ -67,9 +72,10 @@ class SessionDetailViewModel @Inject constructor(
     fun mergePr() = performAction("merge")
 
     private fun performAction(action: String, reason: String? = null) {
+        val id = sessionId ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(actionInProgress = true, actionError = null)
-            repository.sessionAction(sessionId, action, reason).fold(
+            repository.sessionAction(id, action, reason).fold(
                 onSuccess = { updated ->
                     _uiState.value = _uiState.value.copy(
                         session = updated,
@@ -77,7 +83,7 @@ class SessionDetailViewModel @Inject constructor(
                     )
                 },
                 onFailure = { e ->
-                    logManager.error("SessionDetail", "Action '$action' failed for session $sessionId: ${e.message}")
+                    logManager.error("SessionDetail", "Action '$action' failed for session $id: ${e.message}")
                     _uiState.value = _uiState.value.copy(
                         actionInProgress = false,
                         actionError = e.message
