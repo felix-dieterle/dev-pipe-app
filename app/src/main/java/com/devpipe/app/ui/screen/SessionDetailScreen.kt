@@ -190,7 +190,7 @@ private fun JobCard(job: Job) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(job.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(job.name.orEmpty(), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                 JobStatusBadge(job.status)
             }
             if (job.steps.isNotEmpty()) {
@@ -216,13 +216,13 @@ private fun StepRow(step: Step) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("• ", color = color)
-        Text(step.name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-        Text(step.status, style = MaterialTheme.typography.labelSmall, color = color)
+        Text(step.name.orEmpty(), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        Text(step.status.orEmpty(), style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 
 @Composable
-private fun JobStatusBadge(status: String) {
+private fun JobStatusBadge(status: String?) {
     val color = when (status) {
         "success" -> Color(0xFF4CAF50)
         "failed" -> Color(0xFFF44336)
@@ -231,7 +231,7 @@ private fun JobStatusBadge(status: String) {
     }
     Surface(shape = MaterialTheme.shapes.small, color = color.copy(alpha = 0.2f)) {
         Text(
-            text = status,
+            text = status.orEmpty(),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall,
             color = color

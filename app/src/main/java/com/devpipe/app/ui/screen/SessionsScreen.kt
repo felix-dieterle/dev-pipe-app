@@ -68,7 +68,10 @@ fun SessionsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.sessions) { session ->
-                        SessionCard(session = session, onClick = { onSessionClick(session.sessionId) })
+                        val sessionId = session.sessionId
+                        if (!sessionId.isNullOrBlank()) {
+                            SessionCard(session = session, onClick = { onSessionClick(sessionId) })
+                        }
                     }
                 }
             }
