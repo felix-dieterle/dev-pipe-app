@@ -69,7 +69,13 @@ fun NavGraph() {
                 SessionsScreen(
                     onSessionClick = { id ->
                         if (id.isNotBlank()) {
-                            navController.navigate("session_detail?sessionId=${Uri.encode(id)}")
+                            try {
+                                navController.navigate("session_detail?sessionId=${Uri.encode(id)}") {
+                                    launchSingleTop = true
+                                }
+                            } catch (e: Exception) {
+                                // ignore navigation errors
+                            }
                         }
                     },
                     onCreateClick = {

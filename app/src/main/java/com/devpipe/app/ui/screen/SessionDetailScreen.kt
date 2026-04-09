@@ -103,7 +103,7 @@ fun SessionDetailScreen(
                                     StatusChip(session.status)
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                Text(session.description, style = MaterialTheme.typography.bodyMedium)
+                                Text(session.description.orEmpty(), style = MaterialTheme.typography.bodyMedium)
                                 session.repo?.let { repo ->
                                     Spacer(Modifier.height(4.dp))
                                     Text(

@@ -46,22 +46,28 @@ class SessionDetailViewModel @Inject constructor(
         val id = sessionId ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            val sessionResult = repository.getSession(id)
-            val jobsResult = repository.getJobs()
-            val error = sessionResult.exceptionOrNull()?.message
-            if (error != null) {
-                logManager.error("SessionDetail", "Load failed for session $id: $error")
+            try {
+                val sessionResult = repository.getSession(id)
+                val jobsResult = repository.getJobs()
+                val error = sessionResult.exceptionOrNull()?.message
+                if (error != null) {
+                    logManager.error("SessionDetail", "Load failed for session $id: $error")
+                }
+                val session = sessionResult.getOrNull()
+                val allJobs = jobsResult.getOrNull() ?: emptyList()
+                val sessionJobs = session?.let { s ->
+                    val sessionName = s.name.orEmpty()
+                    allJobs.filter { it.name?.contains(sessionName, ignoreCase = true) == true }
+                } ?: emptyList()
+                _uiState.value = SessionDetailUiState(
+                    session = session,
+                    jobs = sessionJobs,
+                    error = error
+                )
+            } catch (e: Exception) {
+                logManager.error("SessionDetail", "Unexpected error loading session $id: ${e.message}")
+                _uiState.value = SessionDetailUiState(error = e.message ?: "Unexpected error")
             }
-            val session = sessionResult.getOrNull()
-            val allJobs = jobsResult.getOrNull() ?: emptyList()
-            val sessionJobs = session?.let { s ->
-                allJobs.filter { it.name.contains(s.name, ignoreCase = true) }
-            } ?: emptyList()
-            _uiState.value = SessionDetailUiState(
-                session = session,
-                jobs = sessionJobs,
-                error = error
-            )
         }
     }
 

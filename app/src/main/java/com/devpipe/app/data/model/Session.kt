@@ -4,9 +4,9 @@ import com.google.gson.annotations.SerializedName
 
 data class Session(
     @SerializedName("session_id") val sessionId: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("description") val description: String,
-    @SerializedName("status") val status: String,
+    @SerializedName("name") val name: String?,
+    @SerializedName("description") val description: String?,
+    @SerializedName("status") val status: String?,
     @SerializedName("repo") val repo: Repo?,
     @SerializedName("pr_url") val prUrl: String?,
     @SerializedName("created_at") val createdAt: String?,
