@@ -22,7 +22,7 @@ class DevPipeRepository @Inject constructor(
     private val phpApi: PhpDiscoveryApi
 ) {
 
-    suspend fun getHealth(): Result<HealthResponse> = runCatching { api.getHealth() }
+    suspend fun getHealth(): Result<HealthResponse> = runCatching { HealthResponse(api.getHealth()) }
 
     suspend fun getStatus(): Result<StatusResponse> = runCatching { api.getStatus() }
 

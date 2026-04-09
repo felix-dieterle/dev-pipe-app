@@ -1,7 +1,7 @@
 package com.devpipe.app.data.api
 
+import com.devpipe.app.data.model.ComponentStatus
 import com.devpipe.app.data.model.CreateSessionRequest
-import com.devpipe.app.data.model.HealthResponse
 import com.devpipe.app.data.model.Job
 import com.devpipe.app.data.model.Session
 import com.devpipe.app.data.model.SessionActionRequest
@@ -14,7 +14,7 @@ import retrofit2.http.Path
 interface DevPipeApi {
 
     @GET("api/health")
-    suspend fun getHealth(): HealthResponse
+    suspend fun getHealth(): List<ComponentStatus>
 
     @GET("api/status")
     suspend fun getStatus(): StatusResponse
