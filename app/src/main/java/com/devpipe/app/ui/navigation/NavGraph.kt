@@ -1,6 +1,7 @@
 package com.devpipe.app.ui.navigation
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -69,7 +70,13 @@ fun NavGraph() {
                 SessionsScreen(
                     onSessionClick = { id ->
                         if (id.isNotBlank()) {
-                            navController.navigate("session_detail?sessionId=${Uri.encode(id)}")
+                            try {
+                                navController.navigate("session_detail?sessionId=${Uri.encode(id)}") {
+                                    launchSingleTop = true
+                                }
+                            } catch (e: Exception) {
+                                Log.e("NavGraph", "Navigation to session $id failed", e)
+                            }
                         }
                     },
                     onCreateClick = {

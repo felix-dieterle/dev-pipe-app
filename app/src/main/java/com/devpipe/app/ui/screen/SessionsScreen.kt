@@ -88,16 +88,16 @@ fun SessionCard(session: Session, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = session.name,
+                    text = session.name ?: "",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
                 StatusChip(status = session.status)
             }
-            if (session.description.isNotBlank()) {
+            if (!session.description.isNullOrBlank()) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = session.description,
+                    text = session.description.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -116,7 +116,7 @@ fun SessionCard(session: Session, onClick: () -> Unit) {
 }
 
 @Composable
-fun StatusChip(status: String) {
+fun StatusChip(status: String?) {
     val (backgroundColor, label) = when (status) {
         "planning" -> StatusGray to "Planning"
         "approved" -> StatusBlue to "Approved"
@@ -124,7 +124,7 @@ fun StatusChip(status: String) {
         "awaiting_approval" -> StatusYellow to "Awaiting Approval"
         "done" -> StatusGreen to "Done"
         "failed" -> StatusRed to "Failed"
-        else -> StatusGray to status
+        else -> StatusGray to (status ?: "Unknown")
     }
     Surface(
         shape = MaterialTheme.shapes.small,
