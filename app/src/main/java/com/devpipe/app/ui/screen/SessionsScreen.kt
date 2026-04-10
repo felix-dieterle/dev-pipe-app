@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -18,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpipe.app.data.model.Session
 import com.devpipe.app.ui.theme.*
 import com.devpipe.app.ui.viewmodel.SessionsViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +29,8 @@ fun SessionsScreen(
     viewModel: SessionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -43,7 +47,8 @@ fun SessionsScreen(
             FloatingActionButton(onClick = onCreateClick) {
                 Icon(Icons.Default.Add, contentDescription = "Create Session")
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when {
             state.isLoading -> {
@@ -72,7 +77,13 @@ fun SessionsScreen(
                             session = session,
                             onClick = {
                                 val sessionId = session.sessionId
-                                if (!sessionId.isNullOrBlank()) onSessionClick(sessionId)
+                                if (!sessionId.isNullOrBlank()) {
+                                    onSessionClick(sessionId)
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Session ID not available")
+                                    }
+                                }
                             }
                         )
                     }
@@ -98,7 +109,15 @@ fun SessionCard(session: Session, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
-                StatusChip(status = session.status)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusChip(status = session.status)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Open session",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             if (!session.description.isNullOrBlank()) {
                 Spacer(Modifier.height(4.dp))
