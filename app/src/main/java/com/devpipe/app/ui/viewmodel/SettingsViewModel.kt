@@ -104,6 +104,15 @@ class SettingsViewModel @Inject constructor(
         private const val FALLBACK_PORT = 8080
     }
 
+    fun saveAndDiscover(url: String, token: String) {
+        viewModelScope.launch {
+            preferencesManager.savePhpDiscoveryUrl(url)
+            preferencesManager.savePhpDiscoveryToken(token)
+            logManager.info("Settings", "PHP discovery settings saved – starting discovery")
+            discoverUrl()
+        }
+    }
+
     fun discoverUrl() {
         viewModelScope.launch {
             val phpUrl = preferencesManager.phpDiscoveryUrl.first()
