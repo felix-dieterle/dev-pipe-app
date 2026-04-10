@@ -30,6 +30,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     var backendUrlInput by remember(backendUrl) { mutableStateOf(backendUrl) }
     var phpUrlInput by remember(phpDiscoveryUrl) { mutableStateOf(phpDiscoveryUrl) }
     var phpTokenInput by remember(phpDiscoveryToken) { mutableStateOf(phpDiscoveryToken) }
+    var phpTokenVisible by remember { mutableStateOf(false) }
     var tokenInput by remember { mutableStateOf(viewModel.getToken()) }
     var tokenVisible by remember { mutableStateOf(false) }
 
@@ -88,7 +89,15 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 supportingText = { Text("Token for the PHP discovery endpoint (DEV_PIPE_TOKEN in api.php). Used to fetch the backend URL and auto-retrieve the Dev-Pipe API token.") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation()
+                visualTransformation = if (phpTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { phpTokenVisible = !phpTokenVisible }) {
+                        Icon(
+                            imageVector = if (phpTokenVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (phpTokenVisible) "Hide token" else "Show token"
+                        )
+                    }
+                }
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
@@ -99,7 +108,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     modifier = Modifier.weight(1f)
                 ) { Text("Save") }
                 OutlinedButton(
-                    onClick = { viewModel.discoverUrl() },
+                    onClick = { viewModel.saveAndDiscover(phpUrlInput.trim(), phpTokenInput.trim()) },
                     modifier = Modifier.weight(1f),
                     enabled = !uiState.discoveryInProgress
                 ) {
